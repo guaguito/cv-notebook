@@ -7,3 +7,9 @@ FROM quay.io/jupyter/tensorflow-notebook
 
 # If you do switch to root, always be sure to add a "USER $NB_USER" command at the end of the
 # file to ensure the image runs as a unprivileged user by default.
+
+RUN pip install --no-cache-dir \
+    "opencv-python" \
+    "opencv-contrib-python" && \
+    fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"
