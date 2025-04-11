@@ -1,11 +1,11 @@
-name: Build, test, and publish Docker Images
+name: Build, test, and publish Docker Image
 
 env:
   OWNER: ${{ github.repository_owner }}
   IMAGE_NAME: ${{ github.event.repository.name }}
 
 # For more details on events that trigger workflows see:
-# https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows
+# https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows
 on:
   schedule:
     # Weekly, at 07:00 on Monday UTC time
@@ -26,15 +26,15 @@ on:
       - "requirements-dev.txt"
   workflow_dispatch:
 
-# https://docs.github.com/en/actions/using-jobs/using-concurrency
+# https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/control-the-concurrency-of-workflows-and-jobs
 concurrency:
   # only cancel in-progress jobs or runs for the current workflow - matches against branch & tags
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-test-publish-images:
-    runs-on: ubuntu-latest
+  build-test-publish-image:
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 
@@ -45,7 +45,7 @@ jobs:
       - name: Set Up Python 🐍
         uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: 3.12
 
       - name: Install Dev Dependencies 📦
         run: |
@@ -59,7 +59,12 @@ jobs:
         id: get_sha
 
       - name: Build image 🛠
-        run: docker build --rm --force-rm --tag ${{ env.OWNER }}/${{ env.IMAGE_NAME }}:latest --tag ${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{steps.get_sha.outputs.sha12}} image/
+        run: >
+          docker build
+          --rm --force-rm
+          --tag ${{ env.OWNER }}/${{ env.IMAGE_NAME }}
+          --tag ${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{steps.get_sha.outputs.sha12}}
+          image/
         env:
           DOCKER_BUILDKIT: 1
           # Full logs for CI build
@@ -67,10 +72,12 @@ jobs:
 
       - name: Run tests ✅
         run: python3 -m pytest tests
+        env:
+          TEST_IMAGE: "guaguito/cv-notebook"
 
       - name: Login to Docker Hub 🔐
-        if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ env.OWNER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
